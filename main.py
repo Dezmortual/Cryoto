@@ -496,6 +496,15 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request, exc):
+    # Always return JSON, never a bare "Internal Server Error" text response --
+    # the dashboard's JS always expects r.json() to succeed.
+    logger.exception(f"Unhandled error on {request.url.path}: {exc}")
+    from fastapi.responses import JSONResponse
+    return JSONResponse(status_code=500, content={"detail": f"Internal error: {exc}"})
+
+
 def _check_key(x_api_key: str | None):
     if settings.api_control_key and x_api_key != settings.api_control_key:
         raise HTTPException(status_code=401, detail="Invalid or missing X-API-Key")
@@ -752,7 +761,7 @@ async function checkSignal(){
   const out = document.getElementById('signal-out');
   out.textContent = 'Loading...';
   try{
-    const r = await fetch(`/signal/${encodeURIComponent(symbol)}?timeframe=${timeframe}`);
+    const r = await fetch(`/signal?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}`);
     const d = await r.json();
     if(!r.ok) throw new Error(d.detail || 'error');
     const sigLabel = d.signal === 1 ? '&#128994; LONG' : (d.signal === -1 ? '&#128308; EXIT/SHORT' : '&#9898; none');
@@ -872,8 +881,8 @@ def health():
     return {"status": "ok", "mode": settings.trading_mode}
 
 
-@app.get("/signal/{symbol}")
-def get_signal(symbol: str, timeframe: str = Query(default=None)):
+@app.get("/signal")
+def get_signal(symbol: str = Query(...), timeframe: str = Query(default=None)):
     symbol = unquote(symbol)
     tf = timeframe or settings.default_timeframe
     try:
@@ -919,7 +928,7 @@ class PaperStartRequest(BaseModel):
 
 
 @app.post("/paper/start")
-def paper_start_route(req: PaperStartRequest, x_api_key: str | None = Header(default=None)):
+async def paper_start_route(req: PaperStartRequest, x_api_key: str | None = Header(default=None)):
     _check_key(x_api_key)
     symbol = req.symbol or settings.default_symbol
     timeframe = req.timeframe or settings.default_timeframe
@@ -928,7 +937,7 @@ def paper_start_route(req: PaperStartRequest, x_api_key: str | None = Header(def
 
 
 @app.post("/paper/stop")
-def paper_stop_route(symbol: str = Query(default=None), x_api_key: str | None = Header(default=None)):
+async def paper_stop_route(symbol: str = Query(default=None), x_api_key: str | None = Header(default=None)):
     _check_key(x_api_key)
     sym = symbol or settings.default_symbol
     stopped = scheduler_stop(sym)
