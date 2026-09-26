@@ -1,0 +1,37 @@
+name: unpack-bootstrap
+
+# Triggers automatically whenever project.zip.b64 is added/changed at the repo root.
+# It base64-decodes it back into a zip, extracts it into the repo, commits the
+# real files/folders, then deletes the payload and this workflow so it only
+# ever runs once.
+
+on:
+  push:
+    paths:
+      - "project.zip.b64"
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decode and extract payload
+        run: |
+          base64 -d project.zip.b64 > project.zip
+          unzip -o project.zip -d .
+          rm -f project.zip project.zip.b64
+
+      - name: Remove this one-time workflow
+        run: rm -f .github/workflows/unpack-bootstrap.yml
+
+      - name: Commit extracted project
+        run: |
+          git config user.name "bootstrap-bot"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "Unpack project from bootstrap payload"
+          git push
