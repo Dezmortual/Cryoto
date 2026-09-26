@@ -550,91 +550,151 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Crypto Bot Dashboard</title>
+<title>Ledger &mdash; Signal Terminal</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%230a0e14'/%3E%3Cpath d='M4 17l4-6 4 3 5-8 3 4' stroke='%23e2a33d' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <style>
   :root{
-    --bg:#0b0f14; --panel:#121820; --panel-border:#232b36; --text:#e6edf3;
-    --muted:#8b98a5; --accent:#3fb950; --accent2:#58a6ff; --danger:#f85149;
-    --warn:#d29922;
+    --bg:#0a0e14; --bg-raised:#0d131b; --line:#1c2530; --line-soft:#161e28;
+    --text:#e6ecf2; --muted:#6e7a88; --muted-2:#4a545f;
+    --accent:#e2a33d; --accent-dim:#7a5a26;
+    --pos:#23c586; --neg:#ff6b5f;
+    --sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   }
   *{box-sizing:border-box;}
+  ::selection{background:var(--accent-dim); color:#fff;}
   body{
-    margin:0; background:var(--bg); color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
     padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+    -webkit-font-smoothing:antialiased;
   }
+  a{color:var(--accent);}
+
+  /* ---------- Header / brand ---------- */
   header{
-    padding:16px 16px 12px; border-bottom:1px solid var(--panel-border);
-    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:16px 18px; border-bottom:1px solid var(--line);
   }
-  header h1{font-size:17px; margin:0; font-weight:600;}
-  .badge{
-    font-size:11px; padding:3px 9px; border-radius:20px; font-weight:600;
-    text-transform:uppercase; letter-spacing:.03em;
+  .brand{display:flex; align-items:center; gap:10px; min-width:0;}
+  .brand svg{flex:none;}
+  .brand-name{font-weight:600; font-size:16px; letter-spacing:.01em; white-space:nowrap;}
+  .brand-sub{color:var(--muted); font-size:11px; margin-top:1px;}
+  .status{display:flex; align-items:center; gap:8px; flex:none;}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--muted-2); transition:background .3s;}
+  .dot.ok{background:var(--pos); box-shadow:0 0 0 3px rgba(35,197,134,.15);}
+  .dot.bad{background:var(--neg); box-shadow:0 0 0 3px rgba(255,107,95,.15);}
+  .mode{
+    font-family:var(--mono); font-size:11px; padding:3px 8px; border:1px solid var(--line);
+    color:var(--muted); letter-spacing:.02em;
   }
-  .badge.paper{background:rgba(88,166,255,.15); color:var(--accent2);}
-  .badge.live{background:rgba(248,81,73,.15); color:var(--danger);}
-  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
-  .dot.ok{background:var(--accent);} .dot.bad{background:var(--danger);}
-  main{padding:14px; max-width:900px; margin:0 auto;}
-  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:16px;}
-  .card{background:var(--panel); border:1px solid var(--panel-border); border-radius:10px; padding:12px;}
-  .card .label{color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px;}
-  .card .value{font-size:20px; font-weight:700;}
-  .value.pos{color:var(--accent);} .value.neg{color:var(--danger);}
-  section{background:var(--panel); border:1px solid var(--panel-border); border-radius:10px; padding:14px; margin-bottom:14px;}
-  section h2{font-size:14px; margin:0 0 10px; color:var(--text); display:flex; align-items:center; gap:8px;}
+  .mode.live{color:var(--neg); border-color:rgba(255,107,95,.35);}
+  .mode.paper{color:var(--accent); border-color:rgba(226,163,61,.35);}
+
+  /* ---------- Ticker strip ---------- */
+  .ticker{
+    display:grid; grid-template-columns:repeat(4,1fr);
+    border-bottom:1px solid var(--line);
+  }
+  .ticker .cell{
+    padding:14px 16px; border-right:1px solid var(--line);
+  }
+  .ticker .cell:last-child{border-right:none;}
+  .ticker .cell .label{color:var(--muted); font-size:11px; margin-bottom:5px;}
+  .ticker .cell .num{font-family:var(--mono); font-size:19px; font-weight:500; letter-spacing:-.01em;}
+  .num.pos{color:var(--pos);} .num.neg{color:var(--neg);}
+
+  /* ---------- Content sections ---------- */
+  main{max-width:760px; margin:0 auto; padding:0 0 32px;}
+  section{padding:22px 18px; border-bottom:1px solid var(--line);}
+  section h2{
+    font-size:13px; font-weight:600; margin:0 0 14px; color:var(--accent);
+    display:flex; align-items:center; gap:7px;
+  }
+  section h2 .glyph{font-family:var(--mono); font-weight:400; color:var(--muted-2);}
+  .hint{color:var(--muted); font-size:12.5px; line-height:1.5;}
+
   .row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;}
   input,select{
-    background:#0d1117; border:1px solid var(--panel-border); color:var(--text);
-    padding:8px 10px; border-radius:6px; font-size:13px; flex:1; min-width:100px;
+    background:var(--bg-raised); border:1px solid var(--line); color:var(--text);
+    padding:9px 10px; font-size:13px; flex:1; min-width:96px; font-family:var(--sans);
   }
+  input:focus,select:focus{outline:none; border-color:var(--accent);}
+  input::placeholder{color:var(--muted-2);}
+
   button{
-    background:var(--accent2); color:#04101c; border:none; padding:9px 14px;
-    border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;
+    background:var(--accent); color:#1a1206; border:none; padding:9px 16px;
+    font-size:13px; font-weight:600; cursor:pointer; font-family:var(--sans);
   }
-  button.secondary{background:transparent; border:1px solid var(--panel-border); color:var(--text);}
-  button.danger{background:var(--danger); color:#fff;}
-  button:disabled{opacity:.5;}
-  table{width:100%; border-collapse:collapse; font-size:12px; margin-top:8px;}
-  th,td{text-align:left; padding:6px 8px; border-bottom:1px solid var(--panel-border); white-space:nowrap;}
-  th{color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase;}
-  .muted{color:var(--muted); font-size:12px;}
-  .result-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; margin:10px 0;}
-  .result-grid .card{padding:8px;}
-  .result-grid .value{font-size:16px;}
-  canvas{max-height:200px;}
+  button:hover{background:#eeb45c;}
+  button.ghost{background:transparent; border:1px solid var(--line); color:var(--text);}
+  button.ghost:hover{border-color:var(--muted);}
+  button.stop{background:transparent; border:1px solid rgba(255,107,95,.4); color:var(--neg);}
+  button.stop:hover{background:rgba(255,107,95,.08);}
+  button:disabled{opacity:.45; cursor:default;}
+
+  table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12px;}
+  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--line-soft); white-space:nowrap;}
+  th{color:var(--muted); font-weight:400; font-size:10.5px; letter-spacing:.03em; font-family:var(--sans);}
+
+  .position-line{
+    font-family:var(--mono); font-size:13px; padding:12px 14px; background:var(--bg-raised);
+    border-left:2px solid var(--accent);
+  }
+  .position-empty{color:var(--muted); font-size:13px;}
+
+  .result-strip{display:flex; flex-wrap:wrap; border:1px solid var(--line); margin:14px 0;}
+  .result-strip .cell{flex:1; min-width:100px; padding:12px 14px; border-right:1px solid var(--line);}
+  .result-strip .cell:last-child{border-right:none;}
+  .result-strip .label{color:var(--muted); font-size:10.5px; margin-bottom:4px;}
+  .result-strip .num{font-family:var(--mono); font-size:16px;}
+
+  canvas{max-height:180px; margin-top:6px;}
   .scroll-x{overflow-x:auto;}
+
+  .disclaimer{
+    color:var(--muted-2); font-size:11px; text-align:center; padding:20px 18px 28px; line-height:1.6;
+  }
+
   .toast{
     position:fixed; bottom:calc(16px + env(safe-area-inset-bottom,0px)); left:50%;
-    transform:translateX(-50%); background:#1c2530; border:1px solid var(--panel-border);
-    padding:10px 16px; border-radius:8px; font-size:13px; display:none; z-index:50;
+    transform:translateX(-50%); background:var(--bg-raised); border:1px solid var(--line);
+    padding:10px 16px; font-size:13px; display:none; z-index:50; font-family:var(--mono);
   }
-  .disclaimer{color:var(--muted); font-size:11px; text-align:center; padding:10px 16px 20px;}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>&#128200; Crypto Signal Bot</h1>
-  <div>
+  <div class="brand">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+      <path d="M4 17l4-6 4 3 5-8 3 4" stroke="#e2a33d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <div class="brand-name">Ledger</div>
+      <div class="brand-sub">Signal terminal</div>
+    </div>
+  </div>
+  <div class="status">
     <span id="health-dot" class="dot bad"></span>
-    <span id="mode-badge" class="badge paper">--</span>
+    <span id="mode-badge" class="mode paper">&mdash;</span>
   </div>
 </header>
 
+<div class="ticker">
+  <div class="cell"><div class="label">Balance</div><div class="num" id="balance">&mdash;</div></div>
+  <div class="cell"><div class="label">Equity</div><div class="num" id="equity">&mdash;</div></div>
+  <div class="cell"><div class="label">Open P&amp;L</div><div class="num" id="open-pnl">&mdash;</div></div>
+  <div class="cell"><div class="label">Trades</div><div class="num" id="num-trades">&mdash;</div></div>
+</div>
+
 <main>
 
-  <div class="grid">
-    <div class="card"><div class="label">Balance</div><div class="value" id="balance">--</div></div>
-    <div class="card"><div class="label">Equity</div><div class="value" id="equity">--</div></div>
-    <div class="card"><div class="label">Open P&amp;L</div><div class="value" id="open-pnl">--</div></div>
-    <div class="card"><div class="label">Trades</div><div class="value" id="num-trades">--</div></div>
-  </div>
-
   <section>
-    <h2>&#128225; Live Signal</h2>
+    <h2><span class="glyph">01</span> Live signal</h2>
     <div class="row">
       <input id="sig-symbol" value="BTC/USDT" placeholder="BTC/USDT">
       <select id="sig-timeframe">
@@ -643,11 +703,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </select>
       <button onclick="checkSignal()">Check</button>
     </div>
-    <div id="signal-out" class="muted">Tap Check to fetch the current signal.</div>
+    <div id="signal-out" class="hint">Tap Check to fetch the current signal.</div>
   </section>
 
   <section>
-    <h2>&#9881;&#65039; Paper Trading</h2>
+    <h2><span class="glyph">02</span> Paper trading</h2>
     <div class="row">
       <input id="ctl-symbol" value="BTC/USDT" placeholder="BTC/USDT">
       <select id="ctl-timeframe">
@@ -656,34 +716,34 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </select>
     </div>
     <div class="row">
-      <input id="api-key" type="password" placeholder="API_CONTROL_KEY (if set on server)">
+      <input id="api-key" type="password" placeholder="API control key (if set on server)">
     </div>
     <div class="row">
       <button onclick="startPaper()">Start</button>
-      <button class="danger" onclick="stopPaper()">Stop</button>
-      <button class="secondary" onclick="refreshStatus()">Refresh now</button>
+      <button class="stop" onclick="stopPaper()">Stop</button>
+      <button class="ghost" onclick="refreshStatus()">Refresh now</button>
     </div>
-    <div id="ctl-out" class="muted"></div>
-    <div class="muted" id="running-list" style="margin-top:6px;"></div>
+    <div id="ctl-out" class="hint"></div>
+    <div class="hint" id="running-list" style="margin-top:4px;"></div>
   </section>
 
   <section>
-    <h2>&#128202; Open Position</h2>
-    <div id="position-out" class="muted">No open position.</div>
+    <h2><span class="glyph">03</span> Open position</h2>
+    <div id="position-out" class="position-empty">No open position.</div>
   </section>
 
   <section>
-    <h2>&#128203; Trade Log</h2>
+    <h2><span class="glyph">04</span> Trade log</h2>
     <div class="scroll-x">
       <table id="trade-table">
         <thead><tr><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>P&amp;L %</th><th>P&amp;L</th><th>Reason</th></tr></thead>
-        <tbody><tr><td colspan="7" class="muted">No trades yet.</td></tr></tbody>
+        <tbody><tr><td colspan="7" class="hint">No trades yet.</td></tr></tbody>
       </table>
     </div>
   </section>
 
   <section>
-    <h2>&#129514; Backtest</h2>
+    <h2><span class="glyph">05</span> Backtest</h2>
     <div class="row">
       <input id="bt-symbol" value="BTC/USDT" placeholder="BTC/USDT">
       <select id="bt-timeframe">
@@ -699,23 +759,22 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       <input id="bt-balance" type="number" value="10000" placeholder="Starting balance">
       <input id="bt-risk" type="number" value="1" step="0.1" placeholder="Risk % / trade">
     </div>
-    <button onclick="runBacktest()" id="bt-btn">Run Backtest</button>
-    <div id="bt-status" class="muted" style="margin-top:8px;"></div>
+    <button onclick="runBacktest()" id="bt-btn">Run backtest</button>
+    <div id="bt-status" class="hint" style="margin-top:10px;"></div>
     <div id="bt-results" style="display:none;">
-      <div class="result-grid">
-        <div class="card"><div class="label">Win Rate</div><div class="value" id="bt-winrate">--</div></div>
-        <div class="card"><div class="label">Return</div><div class="value" id="bt-return">--</div></div>
-        <div class="card"><div class="label">Max Drawdown</div><div class="value" id="bt-dd">--</div></div>
-        <div class="card"><div class="label">Profit Factor</div><div class="value" id="bt-pf">--</div></div>
-        <div class="card"><div class="label"># Trades</div><div class="value" id="bt-num">--</div></div>
+      <div class="result-strip">
+        <div class="cell"><div class="label">Win rate</div><div class="num" id="bt-winrate">&mdash;</div></div>
+        <div class="cell"><div class="label">Return</div><div class="num" id="bt-return">&mdash;</div></div>
+        <div class="cell"><div class="label">Max drawdown</div><div class="num" id="bt-dd">&mdash;</div></div>
+        <div class="cell"><div class="label">Profit factor</div><div class="num" id="bt-pf">&mdash;</div></div>
+        <div class="cell"><div class="label">Trades</div><div class="num" id="bt-num">&mdash;</div></div>
       </div>
       <canvas id="bt-chart"></canvas>
     </div>
   </section>
 
   <div class="disclaimer">
-    Paper trading / educational tool. No strategy has a guaranteed win rate.
-    Not financial advice.
+    Paper trading / educational tool. No strategy has a guaranteed win rate.<br>Not financial advice.
   </div>
 </main>
 
@@ -737,7 +796,7 @@ async function refreshHealth(){
     document.getElementById('health-dot').className = 'dot ok';
     const badge = document.getElementById('mode-badge');
     badge.textContent = d.mode;
-    badge.className = 'badge ' + (d.mode === 'LIVE' ? 'live' : 'paper');
+    badge.className = 'mode ' + (d.mode === 'LIVE' ? 'live' : 'paper');
   }catch(e){
     document.getElementById('health-dot').className = 'dot bad';
   }
@@ -753,15 +812,17 @@ async function refreshStatus(){
     const openPnl = d.equity - d.balance;
     const pnlEl = document.getElementById('open-pnl');
     pnlEl.textContent = (openPnl >= 0 ? '+' : '') + '$' + fmt(openPnl);
-    pnlEl.className = 'value ' + (openPnl > 0 ? 'pos' : (openPnl < 0 ? 'neg' : ''));
+    pnlEl.className = 'num ' + (openPnl > 0 ? 'pos' : (openPnl < 0 ? 'neg' : ''));
 
     const posOut = document.getElementById('position-out');
     if(d.open_position){
       const p = d.open_position;
-      posOut.innerHTML = `<strong>${p.symbol}</strong> &mdash; ${p.side.toUpperCase()}
-        &nbsp;| Entry: $${fmt(p.entry_price)} | Stop: $${fmt(p.stop)} | Target: $${fmt(p.target)}
-        | Size: $${fmt(p.size)}`;
+      posOut.className = 'position-line';
+      posOut.innerHTML = `${p.symbol} &nbsp;${p.side.toUpperCase()}&nbsp;
+        &nbsp;| entry $${fmt(p.entry_price)} &nbsp;stop $${fmt(p.stop)} &nbsp;target $${fmt(p.target)}
+        &nbsp;| size $${fmt(p.size)}`;
     } else {
+      posOut.className = 'position-empty';
       posOut.textContent = 'No open position.';
     }
 
@@ -773,12 +834,12 @@ async function refreshStatus(){
           <td>${t.side}</td>
           <td>$${fmt(t.entry_price)}</td>
           <td>$${fmt(t.exit_price)}</td>
-          <td style="color:${t.pnl_pct>=0?'var(--accent)':'var(--danger)'}">${t.pnl_pct>=0?'+':''}${fmt(t.pnl_pct)}%</td>
-          <td style="color:${t.pnl_quote>=0?'var(--accent)':'var(--danger)'}">${t.pnl_quote>=0?'+':''}$${fmt(t.pnl_quote)}</td>
+          <td style="color:${t.pnl_pct>=0?'var(--pos)':'var(--neg)'}">${t.pnl_pct>=0?'+':''}${fmt(t.pnl_pct)}%</td>
+          <td style="color:${t.pnl_quote>=0?'var(--pos)':'var(--neg)'}">${t.pnl_quote>=0?'+':''}$${fmt(t.pnl_quote)}</td>
           <td>${t.reason}</td>
         </tr>`).join('');
     } else {
-      tbody.innerHTML = '<tr><td colspan="7" class="muted">No trades yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="hint">No trades yet.</td></tr>';
     }
 
     document.getElementById('running-list').textContent =
@@ -799,9 +860,10 @@ async function checkSignal(){
     const r = await fetch(`/signal?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}`);
     const d = await r.json();
     if(!r.ok) throw new Error(d.detail || 'error');
-    const sigLabel = d.signal === 1 ? '&#128994; LONG' : (d.signal === -1 ? '&#128308; EXIT/SHORT' : '&#9898; none');
-    out.innerHTML = `Price: $${fmt(d.close)} &nbsp;|&nbsp; Trend: ${d.trend} &nbsp;|&nbsp;
-      RSI: ${fmt(d.rsi)} &nbsp;|&nbsp; Signal: ${sigLabel}`;
+    const sigLabel = d.signal === 1 ? 'LONG' : (d.signal === -1 ? 'EXIT / SHORT' : 'none');
+    const sigColor = d.signal === 1 ? 'var(--pos)' : (d.signal === -1 ? 'var(--neg)' : 'var(--muted)');
+    out.innerHTML = `price $${fmt(d.close)} &nbsp;&nbsp;trend ${d.trend} &nbsp;&nbsp;
+      rsi ${fmt(d.rsi)} &nbsp;&nbsp;signal <span style="color:${sigColor}">${sigLabel}</span>`;
   }catch(e){
     out.textContent = 'Error: ' + e.message;
   }
@@ -867,14 +929,13 @@ async function runBacktest(){
     document.getElementById('bt-winrate').textContent = fmt(d.win_rate_pct) + '%';
     const retEl = document.getElementById('bt-return');
     retEl.textContent = (d.total_return_pct>=0?'+':'') + fmt(d.total_return_pct) + '%';
-    retEl.className = 'value ' + (d.total_return_pct>=0?'pos':'neg');
+    retEl.className = 'num ' + (d.total_return_pct>=0?'pos':'neg');
     document.getElementById('bt-dd').textContent = fmt(d.max_drawdown_pct) + '%';
     document.getElementById('bt-pf').textContent = d.profit_factor === -1 ? '&#8734;' : fmt(d.profit_factor);
     document.getElementById('bt-num').textContent = d.num_trades;
     document.getElementById('bt-results').style.display = 'block';
     status.textContent = `${d.symbol} ${d.timeframe}, ${d.start.slice(0,10)} to ${d.end.slice(0,10)}.`;
 
-    // Build equity curve from the trade list
     let bal = d.starting_balance;
     const points = [bal];
     const labels = ['start'];
@@ -884,10 +945,10 @@ async function runBacktest(){
     if(btChart) btChart.destroy();
     btChart = new Chart(ctx, {
       type:'line',
-      data:{ labels, datasets:[{ data: points, borderColor:'#58a6ff', backgroundColor:'rgba(88,166,255,.1)',
-        fill:true, tension:0.15, pointRadius:0, borderWidth:2 }]},
+      data:{ labels, datasets:[{ data: points, borderColor:'#e2a33d', backgroundColor:'rgba(226,163,61,.08)',
+        fill:true, tension:0.1, pointRadius:0, borderWidth:1.5 }]},
       options:{ responsive:true, plugins:{legend:{display:false}},
-        scales:{ x:{display:false}, y:{ticks:{color:'#8b98a5'}, grid:{color:'#232b36'}} } }
+        scales:{ x:{display:false}, y:{ticks:{color:'#6e7a88', font:{family:'IBM Plex Mono', size:10}}, grid:{color:'#1c2530'}} } }
     });
   }catch(e){
     status.textContent = 'Error: ' + e.message;
